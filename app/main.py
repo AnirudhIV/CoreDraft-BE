@@ -15,6 +15,8 @@ app = FastAPI(title="AI Compliance Backend", debug=True)
 origins = [
     "http://localhost",
     "http://localhost:3000",
+    "https://core-draft-fe-kdvu.vercel.app/",
+    "https://*.vercel.app"
 ]
 
 app.add_middleware(
