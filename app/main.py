@@ -2,22 +2,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import SessionLocal, engine, Base
 from app.database.models import Base, User, Email, Document
-from app.routes import users, emails, compliance,admin
+from app.routes import users, emails, compliance, admin
 from app.chroma.embedder import embed_text
 from app.auth import routes as auth_routes
-
-
-
-
-
-
 
 # Create DB tables
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="AI Compliance Backend",debug=True)
+app = FastAPI(title="AI Compliance Backend", debug=True)
 
-# CORS (adjust as needed)
+# CORS settings - adjust origins as needed
 origins = [
     "http://localhost",
     "http://localhost:3000",
@@ -36,9 +30,13 @@ app.add_middleware(
 def read_root():
     return {"message": "Compliance API is running"}
 
-# Include route files
+# Include your API route modules
 app.include_router(users.router, prefix="/users", tags=["Users"])
-
 app.include_router(admin.router, prefix="/admin", tags=["Admin"])
 app.include_router(compliance.router, prefix="/compliance", tags=["Compliance"])
 app.include_router(auth_routes.router, prefix="/auth", tags=["Auth"])
+
+# Entry point for local testing and Vercel deployment
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
