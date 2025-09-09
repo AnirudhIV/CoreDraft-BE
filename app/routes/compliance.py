@@ -32,6 +32,10 @@ from fastapi import status
 
 
 import google.generativeai as genai
+import logging
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 
 
@@ -298,7 +302,8 @@ def generate_compliance_doc(
                     }
                 )
             except Exception as e:
-                print(f"[Vectorstore] Failed to embed AI-generated doc: {e}")
+                logger.error(f"[Vectorstore] Failed to embed AI-generated doc: {e}")
+
 
         # ✅ Step 3: Always return the generated doc (with or without DB id)
         return {
