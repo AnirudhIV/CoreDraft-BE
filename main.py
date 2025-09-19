@@ -1,18 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
+from app.database import SessionLocal, engine, Base
+from app.database.models import Base, User, Email, Document
+from app.routes import users, emails, compliance, admin
+from app.auth import routes as auth_routes
 
 # Import your modules (make sure these exist)
-try:
-    from app.database import SessionLocal, engine, Base
-    from app.database.models import Base, User, Email, Document
-    from app.routes import users, emails, compliance, admin
-    from app.auth import routes as auth_routes
-    # from app.chroma.embedder import embed_text  # Comment out if causing issues
-except ImportError as e:
-    print(f"Import warning: {e}")
-    # Create minimal fallback for testing
-    pass
+
 
 app = FastAPI(title="AI Compliance Backend", debug=False)  # Set debug=False for production
 
