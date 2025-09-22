@@ -3,7 +3,7 @@ fastapi==0.117.1
 uvicorn[standard]==0.36.0
 mangum==0.19.0
 starlette==0.47.2
-fastapi-cors==0.1.4
+
 
 # HTTP Client
 httpx>=0.25.0
