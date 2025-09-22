@@ -1,29 +1,33 @@
-# FastAPI Core - REQUIRED for Vercel
-fastapi>=0.104.0
-uvicorn[standard]>=0.24.0
-mangum>=0.17.0
+# --- Core Framework ---
+fastapi==0.116.1
+uvicorn[standard]==0.35.0
+mangum==0.19.0  # Required for serverless/Vercel/Render
 
-# HTTP Client
-httpx>=0.25.0
+# --- HTTP & Env ---
+httpx>=0.28.0
+python-dotenv==1.1.1
 
-# Environment
-python-dotenv>=1.0.0
+# --- Database ---
+sqlalchemy==2.0.42
+psycopg2-binary==2.9.10
+supabase==2.17.0
 
-# Database
-supabase>=2.0.0
-sqlalchemy>=2.0.0
-psycopg2-binary>=2.9.7
+# --- AI / ML ---
+chromadb==1.0.15
+langchain==0.3.27
+google-generativeai==0.8.5
 
-# AI/ML - Gemini
-google-generativeai>=0.3.0
-langchain>=0.1.0
-langchain-google-genai>=0.0.6
+# --- Authentication & Security ---
+python-multipart==0.0.20
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
 
-# FastAPI Authentication & Security
-python-multipart>=0.0.6
-python-jose[cryptography]>=3.3.0
-passlib[bcrypt]>=1.7.4
-pydantic>=2.4.0
-pydantic-settings
+# --- Validation ---
+pydantic==2.11.7
+pydantic-settings==2.10.1
 pydantic[email]
-chromadb>=0.4.0
+
+# --- NLP / RAG ---
+spacy==3.8.7
+# Install spaCy model properly (avoids tar.gz issues on Render)
+en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
