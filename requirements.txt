@@ -68,3 +68,5 @@ rich-toolkit==0.14.9
 orjson==3.11.1
 PyJWT==2.10.1
 ujson==5.10.0
+sentence-transformers>=2.2.2
+torch>=2.0.0
