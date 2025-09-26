@@ -5,6 +5,8 @@ from app.database import SessionLocal, engine, Base
 from app.database.models import Base, User, Email, Document
 from app.routes import users, emails, compliance, admin
 from app.auth import routes as auth_routes
+import uvicorn
+import os
 
 # Import your modules (make sure these exist)
 
@@ -56,5 +58,6 @@ handler = Mangum(app)
 
 # For local development
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
