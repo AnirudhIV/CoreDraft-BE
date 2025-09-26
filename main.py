@@ -10,6 +10,7 @@ import os
 
 # Import your modules (make sure these exist)
 
+print("🚀 Starting app on port:", os.getenv("PORT"))
 
 app = FastAPI(title="AI Compliance Backend", debug=False)  # Set debug=False for production
 
@@ -58,6 +59,5 @@ handler = Mangum(app)
 
 # For local development
 if __name__ == "__main__":
-    
     port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)
