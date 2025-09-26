@@ -1,9 +1,9 @@
 # app/chroma/embedder.py
+from sentence_transformers import SentenceTransformer
 
-from app.utils.lazy_imports import get_sentence_transformers_model
 # Use a model that outputs 768-dimensional embeddings
 MODEL_NAME = "all-mpnet-base-v2"
-model = get_sentence_transformers_model(MODEL_NAME)
+model = SentenceTransformer(MODEL_NAME)
 
 def embed_text(text: str) -> list[float]:
     """

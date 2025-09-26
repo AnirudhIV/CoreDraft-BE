@@ -1,3 +1,3 @@
-from app.utils.lazy_imports import get_chroma_client
+from chromadb import PersistentClient
 
-chroma_client = get_chroma_client()  # client is instantiated lazily
+chroma_client = PersistentClient(path="./chroma_db")
