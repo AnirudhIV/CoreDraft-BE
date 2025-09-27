@@ -41,10 +41,7 @@ orjson==3.11.1
 protobuf>=3.19.5,<5.0.0
 typing-inspection==0.4.1
 huggingface-hub==0.34.3
-openai==1.97.1
---extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.8.0+cpu
-sentence-transformers==5.1.1
+
 
 
 # NLP

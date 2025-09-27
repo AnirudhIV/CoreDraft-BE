@@ -1,22 +1,45 @@
-# app/chroma/embedder.py
-from sentence_transformers import SentenceTransformer
+import os
+import google.generativeai as genai
+from dotenv import load_dotenv
+import time
+from typing import List
 
-# Use a model that outputs 768-dimensional embeddings
-MODEL_NAME = "all-mpnet-base-v2"
-model = SentenceTransformer(MODEL_NAME)
+# Load environment variables
+load_dotenv()
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-def embed_text(text: str) -> list[float]:
+def embed_text(texts: List[str], task_type: str = "retrieval_document") -> List[List[float]]:
     """
-    Generates an embedding vector for the input text using a local SentenceTransformer model.
+    Generates embeddings for a list of texts using Gemini's embedding model.
 
     Args:
-        text (str): The text to embed.
+        texts (List[str]): List of texts to embed.
+        task_type (str): Either 'retrieval_document' or 'retrieval_query'.
 
     Returns:
-        list[float]: The embedding vector.
+        List[List[float]]: List of embedding vectors corresponding to input texts.
     """
-    if not text.strip():
-        raise ValueError("Text is empty for embedding.")
+    embeddings = []
+    for text in texts:
+        if not text.strip():
+            embeddings.append([])
+            continue
 
-    embedding = model.encode(text, show_progress_bar=False)
-    return embedding.tolist() if hasattr(embedding, "tolist") else embedding
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                response = genai.embed_content(
+                    model="models/embedding-001",
+                    content=text,
+                    task_type=task_type
+                )
+                embeddings.append(response.get("embedding", []))
+                break
+            except Exception as e:
+                print(f"Attempt {attempt+1} ❌ Error embedding text: {e}")
+                time.sleep(2 ** attempt)  # exponential backoff
+        else:
+            # If all retries fail, append empty embedding
+            embeddings.append([])
+
+    return embeddings
