@@ -1,7 +1,8 @@
+import secrets
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database.models import Document as DBDocument, User as DBUser
-from app.auth.auth import get_current_user
+from app.auth.auth import get_current_user, get_password_hash
 from app.database.db import get_db
 
 router = APIRouter()
@@ -78,11 +79,14 @@ def reset_password(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Example: reset to temp password "Temp123!"
-    new_hashed_pw = "hashed-temp"  # replace with actual hash function
-    user.hashed_password = new_hashed_pw
+    # Stopgap: admin-issued temp password. Proper email-based reset-token flow is Phase 4.
+    temp_password = secrets.token_urlsafe(12)
+    user.hashed_password = get_password_hash(temp_password)
     db.commit()
-    return {"message": f"Password reset for {user.email}. Temporary password issued."}
+    return {
+        "message": f"Password reset for {user.email}. Relay this temporary password to the user manually.",
+        "temporary_password": temp_password,
+    }
 
 # Set default document
 @router.put("/documents/{doc_id}/set-default")

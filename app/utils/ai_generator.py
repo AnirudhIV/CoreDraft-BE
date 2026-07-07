@@ -5,7 +5,7 @@ import traceback
 from fastapi import HTTPException
 import google.generativeai as genai
 from langchain.schema import Document
-from app.chroma.vectorstore import query_similar_docs
+from app.chroma.vectorstore import query_similar_docs, _tenant_where
 from chromadb import PersistentClient
 from typing import List, Tuple
 
@@ -177,23 +177,27 @@ Answer:
     except Exception:
         return "There was an error generating the answer.", []
 
-def process_question_and_docs(question: str, top_k: int = 5, answer_style: str = "concise"):
+def process_question_and_docs(question: str, user_id: str, top_k: int = 5, answer_style: str = "concise"):
     """
     Combines hybrid retrieval (vector + keyword), classification,
     and answer generation for maximum accuracy in compliance Q&A.
+    Retrieval is scoped to user_id (plus shared default/baseline docs).
     """
 
     if not isinstance(top_k, int):
         top_k = int(top_k)
 
+    where = _tenant_where(user_id)
+
     # Step 1: Retrieve relevant chunks using hybrid method
-    vector_results = query_similar_docs(question, top_k=top_k)
+    vector_results = query_similar_docs(question, user_id=user_id, top_k=top_k)
 
     # Keyword search fallback
     try:
         keyword_results = collection.query(
             query_texts=[question],
-            n_results=top_k * 5
+            n_results=top_k * 5,
+            where=where
         )
         keyword_docs = [
             Document(page_content=doc, metadata=meta)
@@ -201,7 +205,7 @@ def process_question_and_docs(question: str, top_k: int = 5, answer_style: str =
         ]
     except Exception:
         keyword_docs = []
-        stored_docs = collection.get(include=["documents", "metadatas"])
+        stored_docs = collection.get(include=["documents", "metadatas"], where=where)
         if stored_docs and stored_docs.get("documents"):
             for doc, meta in zip(stored_docs["documents"], stored_docs["metadatas"]):
                 if question.lower() in doc.lower():

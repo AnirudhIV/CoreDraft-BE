@@ -15,6 +15,16 @@ COLLECTION_NAME = "compliance_docs"
 collection = chroma_client.get_or_create_collection(name=COLLECTION_NAME)
 
 
+def _tenant_where(user_id: str) -> dict:
+    """Scope retrieval to the requesting user's own chunks, plus shared default/baseline chunks."""
+    return {
+        "$or": [
+            {"user_id": {"$eq": str(user_id)}},
+            {"is_default": {"$eq": True}},
+        ]
+    }
+
+
 def add_doc_to_vectorstore(
     doc_id: str,
     content: str,
@@ -86,13 +96,14 @@ def delete(doc_id: str):
     print(f"✅ Deleted all chunks for doc_id: {doc_id}")
 
 
-def query_similar_docs(query: str, top_k: int = 3) -> dict:
-    """Retrieve top_k chunks per document using vector similarity search."""
+def query_similar_docs(query: str, user_id: str, top_k: int = 3) -> dict:
+    """Retrieve top_k chunks per document using vector similarity search, scoped to user_id (plus shared default docs)."""
     embedding = embed_text(query)
 
     results = collection.query(
         query_embeddings=[embedding],
-        n_results=50  # fetch more initially to allow grouping by doc
+        n_results=50,  # fetch more initially to allow grouping by doc
+        where=_tenant_where(user_id)
     )
 
     # Group results by doc_id
@@ -114,17 +125,20 @@ def query_similar_docs(query: str, top_k: int = 3) -> dict:
     return grouped
 
 
-def retrieve_relevant_chunks(query: str, top_k: int = 5) -> List[Document]:
-    """Retrieve top_k chunks per document using hybrid retrieval (vector + keyword)."""
+def retrieve_relevant_chunks(query: str, user_id: str, top_k: int = 5) -> List[Document]:
+    """Retrieve top_k chunks per document using hybrid retrieval (vector + keyword), scoped to user_id (plus shared default docs)."""
+
+    where = _tenant_where(user_id)
 
     # --- Vector search (grouped per doc) ---
-    vector_results = query_similar_docs(query, top_k=top_k)
+    vector_results = query_similar_docs(query, user_id=user_id, top_k=top_k)
 
     # --- Keyword search fallback ---
     try:
         keyword_results = collection.query(
             query_texts=[query],
-            n_results=top_k * 5
+            n_results=top_k * 5,
+            where=where
         )
         keyword_docs = [
             Document(page_content=doc, metadata=meta)
@@ -133,7 +147,7 @@ def retrieve_relevant_chunks(query: str, top_k: int = 5) -> List[Document]:
     except Exception:
         # fallback: brute force substring match
         keyword_docs = []
-        stored_docs = collection.get(include=["documents", "metadatas"])
+        stored_docs = collection.get(include=["documents", "metadatas"], where=where)
         if stored_docs and stored_docs.get("documents"):
             for doc, meta in zip(stored_docs["documents"], stored_docs["metadatas"]):
                 if query.lower() in doc.lower():

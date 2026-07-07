@@ -8,10 +8,11 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app.database.models import User
 from app.auth.schemas import TokenData
+from app.config import settings
 
 # --- JWT Config ---
-SECRET_KEY = "2G#kL%7zN!3pH^w9QzXfR@vMjT*YcE0b"
-ALGORITHM = "HS256"
+SECRET_KEY = settings.SECRET_KEY
+ALGORITHM = settings.ALGORITHM
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 1 day
 
 # --- Security Utils ---
@@ -80,5 +81,11 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     if user is None:
         print("User not found in database")
         raise credentials_exception
+
+    if user.blocked:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This account has been blocked",
+        )
 
     return user

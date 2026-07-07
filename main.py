@@ -18,13 +18,13 @@ app = FastAPI(title="AI Compliance Backend", debug=False)  # Set debug=False for
 origins = [
     "http://localhost",
     "http://localhost:3000",
-    "https://core-draft-fe-kdvu.vercel.app",  # Removed trailing slash
-    "https://*.vercel.app"
+    "https://core-draft-fe-kdvu.vercel.app",
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

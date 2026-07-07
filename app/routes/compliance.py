@@ -378,7 +378,7 @@ def ask_question(request: QuestionInput, current_user: User = Depends(get_curren
     top_k = 5  # number of top chunks to retrieve
 
     try:
-        answer, sources = process_question_and_docs(question, top_k=top_k)
+        answer, sources = process_question_and_docs(question, user_id=str(current_user.id), top_k=top_k)
     except Exception as e:
         return {"answer": f"An error occurred while generating the answer: {str(e)}", "sources": []}
 
@@ -458,7 +458,8 @@ async def upload_doc(
                 metadata={
                     "source": file.filename,
                     "file_hash": file_hash,
-                    "user_id": current_user.id,
+                    "user_id": str(current_user.id),
+                    "is_default": bool(new_doc.is_default),
                     "doc_id": str(new_doc.id),  # for filtering/deleting later
                     "tags":  ", ".join(ai_tags),
                     **chunk.get("metadata", {})
