@@ -24,7 +24,6 @@ from chromadb import PersistentClient
 from app.database.models import User
 from app.utils.text_splitter import hybrid_split_text
 from sqlalchemy.exc import SQLAlchemyError
-from app.chroma.embedder import embed_text
 import traceback
 from fastapi import status
 

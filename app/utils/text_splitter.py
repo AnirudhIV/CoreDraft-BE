@@ -15,11 +15,27 @@ def split_by_section(text: str) -> List[Dict]:
     """
     Splits text using patterns like 'Section 1', 'Chapter 2', etc.
     Returns list of dicts with 'text' and 'metadata'.
+
+    Any text preceding the first section header (preamble, definitions,
+    front matter) is kept as its own chunk — it's often substantive and
+    was previously dropped entirely, making it unretrievable.
     """
     section_pattern = r"(Section\s+\d+|Chapter\s+\d+)(.*?)(?=(Section\s+\d+|Chapter\s+\d+|\Z))"
     matches = re.findall(section_pattern, text, re.DOTALL | re.IGNORECASE)
 
     chunks = []
+
+    # Preserve anything before the first matched header.
+    if matches:
+        first_header = re.search(r"(Section\s+\d+|Chapter\s+\d+)", text, re.IGNORECASE)
+        if first_header:
+            preamble = text[:first_header.start()].strip()
+            if preamble:
+                chunks.append({
+                    "text": preamble,
+                    "metadata": {"section_title": "Preamble"}
+                })
+
     for match in matches:
         header = match[0].strip()
         body = match[1].strip()
@@ -85,6 +101,18 @@ def split_text(
     # Ensure chunk_size and chunk_overlap are integers
     chunk_size = int(chunk_size)
     chunk_overlap = int(chunk_overlap)
+
+    # Guard: stride is chunk_size - chunk_overlap, so an overlap >= chunk_size
+    # leaves the start pointer stuck and loops forever appending chunks.
+    if chunk_size <= 0:
+        raise ValueError(f"chunk_size must be positive, got {chunk_size}")
+    if chunk_overlap < 0:
+        raise ValueError(f"chunk_overlap must be non-negative, got {chunk_overlap}")
+    if chunk_overlap >= chunk_size:
+        raise ValueError(
+            f"chunk_overlap ({chunk_overlap}) must be less than "
+            f"chunk_size ({chunk_size}); otherwise chunking cannot advance."
+        )
 
     words = content.split()
     chunks = []

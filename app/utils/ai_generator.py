@@ -5,14 +5,12 @@ import traceback
 from fastapi import HTTPException
 import google.generativeai as genai
 from langchain.schema import Document
-from app.chroma.vectorstore import query_similar_docs, _tenant_where
-from chromadb import PersistentClient
+from app.chroma.vectorstore import retrieve_relevant_chunks
 from typing import List, Tuple
 
-
-chroma_client = PersistentClient(path="./chroma_db")
-COLLECTION_NAME = "compliance_docs"
-collection = chroma_client.get_or_create_collection(name=COLLECTION_NAME)
+# NOTE: no Chroma client here on purpose. This module used to open a second
+# PersistentClient against the same ./chroma_db directory as vectorstore.py.
+# All vector access now goes through app.chroma.vectorstore.
 
 # --- API KEY Setup ---
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -23,6 +21,14 @@ genai.configure(api_key=GEMINI_API_KEY)  # ✅ Use environment variable, not har
 
 # --- Model Initialization ---
 model = genai.GenerativeModel("gemini-2.0-flash")
+
+# Chroma returns distances (lower = closer). Chunks farther than this are
+# dropped rather than padded into the prompt: with no cutoff, an off-topic
+# question still pulls its 50 nearest neighbours and asks Gemini to find
+# compliance gaps in whatever came back. Tuned loose deliberately — recall
+# matters more than precision here, since a missed obligation is worse than
+# an irrelevant chunk.
+DEFAULT_MAX_DISTANCE = 1.0
 
 # --- Document Generation ---
 def generate_document_from_prompt(prompt: str) -> dict:
@@ -177,53 +183,35 @@ Answer:
     except Exception:
         return "There was an error generating the answer.", []
 
-def process_question_and_docs(question: str, user_id: str, top_k: int = 5, answer_style: str = "concise"):
+def process_question_and_docs(
+    question: str,
+    user_id: str,
+    top_k: int = 5,
+    answer_style: str = "concise",
+    max_distance: float | None = DEFAULT_MAX_DISTANCE,
+):
     """
-    Combines hybrid retrieval (vector + keyword), classification,
-    and answer generation for maximum accuracy in compliance Q&A.
+    Hybrid retrieval + baseline/user classification + answer generation.
+
+    Retrieval itself lives in app.chroma.vectorstore.retrieve_relevant_chunks —
+    this used to carry a second, near-identical copy of that logic, which meant
+    the tested implementation and the one serving /compliance/ask could drift
+    apart. There is now a single retrieval path.
+
     Retrieval is scoped to user_id (plus shared default/baseline docs).
     """
-
     if not isinstance(top_k, int):
         top_k = int(top_k)
 
-    where = _tenant_where(user_id)
-
-    # Step 1: Retrieve relevant chunks using hybrid method
-    vector_results = query_similar_docs(question, user_id=user_id, top_k=top_k)
-
-    # Keyword search fallback
-    try:
-        keyword_results = collection.query(
-            query_texts=[question],
-            n_results=top_k * 5,
-            where=where
-        )
-        keyword_docs = [
-            Document(page_content=doc, metadata=meta)
-            for doc, meta in zip(keyword_results["documents"][0], keyword_results["metadatas"][0])
-        ]
-    except Exception:
-        keyword_docs = []
-        stored_docs = collection.get(include=["documents", "metadatas"], where=where)
-        if stored_docs and stored_docs.get("documents"):
-            for doc, meta in zip(stored_docs["documents"], stored_docs["metadatas"]):
-                if question.lower() in doc.lower():
-                    keyword_docs.append(Document(page_content=doc, metadata=meta))
-
-    # Convert vector results to Documents
-    retrieved_docs = []
-    for doc_id, chunks in vector_results.items():
-        for chunk in chunks:
-            retrieved_docs.append(Document(page_content=chunk["text"], metadata=chunk["metadata"]))
-
-    # Add keyword docs if new
-    retrieved_docs.extend(keyword_docs)
+    # Step 1: Hybrid retrieval (vector + lexical), deduplicated and tenant-scoped
+    retrieved_docs = retrieve_relevant_chunks(
+        question, user_id=user_id, top_k=top_k, max_distance=max_distance
+    )
 
     if not retrieved_docs:
         return "Sorry, no relevant documents found.", []
 
-    # Step 2: Classify docs into baseline vs user docs
+    # Step 2: Classify docs into baseline (the law) vs user docs (the company's)
     baseline_chunks, user_chunks = retrieve_and_classify_docs(retrieved_docs)
 
     # Step 3: Generate AI answer from classified docs

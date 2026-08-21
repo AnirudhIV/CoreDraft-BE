@@ -19,6 +19,15 @@ def embed_text(texts: List[str], task_type: str = "retrieval_document") -> List[
     Returns:
         List[List[float]]: List of embedding vectors corresponding to input texts.
     """
+    # Guard: a bare str is iterable, so passing one here used to silently embed
+    # the text character-by-character (one Gemini call per character) and return
+    # a nested list that ChromaDB then rejected. Fail loudly instead.
+    if isinstance(texts, str):
+        raise TypeError(
+            "embed_text() expects a list of strings; got a bare str. "
+            "Use embed_one() to embed a single text."
+        )
+
     embeddings = []
     for text in texts:
         if not text.strip():
@@ -43,3 +52,22 @@ def embed_text(texts: List[str], task_type: str = "retrieval_document") -> List[
             embeddings.append([])
 
     return embeddings
+
+
+def embed_one(text: str, task_type: str = "retrieval_document") -> List[float]:
+    """
+    Embeds a single text and returns one flat vector.
+
+    Use this wherever a single chunk or query is embedded — it returns the
+    shape ChromaDB expects for one item, rather than a list of vectors.
+
+    Args:
+        text (str): The text to embed.
+        task_type (str): 'retrieval_document' when indexing, 'retrieval_query'
+            when embedding a search query. Gemini produces different vectors
+            per task type, so matching the call site improves retrieval.
+
+    Returns:
+        List[float]: A single embedding vector, or [] if embedding failed.
+    """
+    return embed_text([text], task_type=task_type)[0]
